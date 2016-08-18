@@ -241,7 +241,7 @@ if(trigger['type'] == 'property') then
 	
 	local method = 'POST'
 	
-	if(deviceType == "com.fibaro.FGD212") then
+	if(deviceType == "com.fibaro.FGD212" or deviceType == "com.fibaro.multilevelSwitch") then
 		-- ACTUATOR --
 		if(triggeringProperty == "value") then
 			sendData = newValue
@@ -257,7 +257,7 @@ if(trigger['type'] == 'property') then
 			fibaro:debug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
 			return
 		end
-	elseif (deviceType == "com.fibaro.binarySwitch") then
+	elseif (deviceType == "com.fibaro.binarySwitch" or deviceType == "com.fibaro.FGWP101") then
 		-- ACTUATOR --
 		if(triggeringProperty == "value") then
 			if (tonumber(newValue) > 0) then sendData = 'ON' else sendData = 'OFF' end
