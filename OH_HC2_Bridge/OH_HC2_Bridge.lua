@@ -29,6 +29,12 @@
 429 value
 429 batteryLevel
 431 value
+421 value
+422 value
+423 value
+425 value
+426 value
+427 value
 
 
 313 value
@@ -76,6 +82,7 @@
 444 value
 444 power
 444 energy
+445 sceneActivation
 448 value
 448 power
 448 energy
@@ -251,8 +258,10 @@ if(trigger['type'] == 'property') then
 		elseif (triggeringProperty == "power" or triggeringProperty == "energy") then
 			deviceSuffix = deviceSuffix .. "_" .. triggeringProperty
 			sendData = newValue
-		-- UNKNOWN --
-		else
+		elseif (triggeringProperty == "sceneActivation" ) then
+      deviceSuffix = deviceSuffix .. "_" .. triggeringProperty
+      sendData = newValue
+		else -- UNKNOWN --
 			propertyErrorMessage(triggeringProperty)
 			fibaro:debug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
 			return
@@ -343,8 +352,10 @@ if(trigger['type'] == 'property') then
 		elseif (triggeringProperty == "batteryLevel") then
 			deviceSuffix = deviceSuffix .. "_" .. triggeringProperty
 			sendData = newValue
-		-- UNKNOWN --
-		else
+		elseif (triggeringProperty == "sceneActivation" ) then
+      deviceSuffix = deviceSuffix .. "_" .. triggeringProperty
+      sendData = newValue	
+		else -- UNKNOWN --
 			propertyErrorMessage(triggeringProperty)
 			fibaro:debug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
 			return
