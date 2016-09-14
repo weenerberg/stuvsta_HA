@@ -79,6 +79,13 @@
 469 value
 470 value
 471 value
+485 value
+485 batteryLevel
+485 tamper
+486 value
+487 value
+488 value
+489 value
 444 value
 444 power
 444 energy
@@ -104,6 +111,7 @@
 351 tamper
 352 value
 353 value
+274 value
 344 value
 344 power
 344 energy
@@ -144,6 +152,8 @@
 482 value
 483 value
 
+495 value
+495 batteryLevel
 378 value
 378 batteryLevel
 381 value
@@ -151,7 +161,9 @@
 381 energy
 389 value
 390 value
+390 mode
 388 value
+388 mode
 
 
 361 value
@@ -176,6 +188,13 @@
 440 value
 440 power
 440 energy
+497 value
+497 r
+497 b
+497 g
+497 w
+497 energy
+497 power
 
 436 value
 436 power
@@ -188,7 +207,18 @@
 %% globals
 --]]
 
+local function logDebug(msg)
+  local isDebug = fibaro:getGlobalValue("isDebug")
+  if (isDebug == "True") then
+    fibaro:debug(msg)
+  end
+end
+
+
 local function request(meth, requestUrl, data)
+
+  logDebug("Calling url: " .. requestUrl .. " with data: " .. data)
+
   local http = net.HTTPClient()  
   http:request(requestUrl, {
       options = {
@@ -197,33 +227,44 @@ local function request(meth, requestUrl, data)
         data = data
       },
       success = function (response)
-					local isDebug = fibaro:getGlobalValue("isDebug")
-					if (isDebug == "True") then
-						local now = os.time()
-						fibaro:debug("--- Scene succeeded at " .. os.date("%x %X", now))
-					end
-        			
-      			end,
+          local isDebug = fibaro:getGlobalValue("isDebug")
+          if (isDebug == "True") then
+            local now = os.time()
+            fibaro:debug("--- Scene succeeded at " .. os.date("%x %X", now))
+          end
+              
+            end,
       error = function (err)
-        			local now = os.time()
-					fibaro:debug("--- Update failed at " .. os.date("%x %X", now));
-        			fibaro:debug ("Error:" .. err)
-      		  end
+              local now = os.time()
+          fibaro:debug("--- Update failed at " .. os.date("%x %X", now));
+              fibaro:debug ("Error:" .. err)
+            end
   })
 end
 
 local function propertyErrorMessage(prop)
-	local devNotification = tonumber(fibaro:getGlobalValue("DevNotification"))
-	local msg = 'Unknown: ' .. prop
-	fibaro:debug(msg)
-	fibaro:call(devNotification, "sendPush", msg);
+  local devNotification = tonumber(fibaro:getGlobalValue("DevNotification"))
+  local msg = 'Unknown: ' .. prop
+  fibaro:debug(msg)
+  fibaro:call(devNotification, "sendPush", msg);
 end
 
-local function logDebug(msg)
-	local isDebug = fibaro:getGlobalValue("isDebug")
-	if (isDebug == "True") then
-		fibaro:debug(msg)
-	end
+
+local function transformSendData(deviceType, triggeringProperty, value)
+
+  if (deviceType == "com.fibaro.binarySwitch" or deviceType == "com.fibaro.FGWP101"   or
+      deviceType == "com.fibaro.FGMS001"      or deviceType == "com.fibaro.FGMS001v2" or
+      deviceType == "com.fibaro.doorLock") then
+    if(triggeringProperty == "value") then
+      if (tonumber(value) > 0) then return 'ON' else return 'OFF' end
+    end
+  elseif (deviceType == "com.fibaro.doorSensor") then
+    if(triggeringProperty == "value") then
+      if (tonumber(value) > 0) then return 'OPEN' else return 'CLOSED' end
+    end
+  end
+  logDebug("DeviceType: " .. deviceType .. " Property: " .. triggeringProperty .. " Value: " .. value)
+  return value
 end
 
 -- MAIN --
@@ -234,148 +275,44 @@ local trigger = fibaro:getSourceTrigger()
 
 if(trigger['type'] == 'property') then
     
-	local deviceID = trigger['deviceID']
-	local deviceType = fibaro:getType(deviceID)
-	local deviceName = fibaro:getName(deviceID)
-	local triggeringProperty = trigger['propertyName']
-	local newValue = fibaro:getValue(deviceID, triggeringProperty)
-	
-	logDebug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
-	
-	local baseUrl = fibaro:getGlobalValue("OH_url") .. '/rest/items/'
-	local deviceSuffix = '_' .. deviceID
-	local sendData = ""
-	
-	local method = 'POST'
-	
-	if(deviceType == "com.fibaro.FGD212" or deviceType == "com.fibaro.multilevelSwitch") then
-		-- ACTUATOR --
-		if(triggeringProperty == "value") then
-			sendData = newValue
-			method = 'PUT'
-			deviceSuffix = deviceSuffix .. '/state'
-		-- SENSOR --
-		elseif (triggeringProperty == "power" or triggeringProperty == "energy") then
-			deviceSuffix = deviceSuffix .. "_" .. triggeringProperty
-			sendData = newValue
-		elseif (triggeringProperty == "sceneActivation" ) then
-      deviceSuffix = deviceSuffix .. "_" .. triggeringProperty
-      sendData = newValue
-		else -- UNKNOWN --
-			propertyErrorMessage(triggeringProperty)
-			fibaro:debug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
-			return
-		end
-	elseif (deviceType == "com.fibaro.binarySwitch" or deviceType == "com.fibaro.FGWP101") then
-		-- ACTUATOR --
-		if(triggeringProperty == "value") then
-			if (tonumber(newValue) > 0) then sendData = 'ON' else sendData = 'OFF' end
-			method = 'PUT'
-			deviceSuffix = deviceSuffix .. '/state'
-		-- SENSOR --
-		elseif (triggeringProperty == "power" or triggeringProperty == "energy") then
-			deviceSuffix = deviceSuffix .. "_" .. triggeringProperty
-			sendData = newValue
-		-- UNKNOWN --
-		else
-			propertyErrorMessage(triggeringProperty)
-			fibaro:debug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
-			return
-		end	
-	elseif (deviceType == "com.fibaro.setPoint") then
-		-- ACTUATOR --
-		if(triggeringProperty == "value") then
-			sendData = newValue
-			method = 'PUT'
-			deviceSuffix = deviceSuffix .. '/state'
-		-- UNKNOWN --
-		else
-			propertyErrorMessage(triggeringProperty)
-			fibaro:debug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
-			return
-		end
-	elseif (deviceType == "com.fibaro.thermostatDanfoss") then
-		logDebug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName)
-		
-		-- ACTUATOR --
-		if(triggeringProperty == "value") then
-			sendData = newValue
-			method = 'PUT'
-			deviceSuffix = deviceSuffix .. '/state'
-		-- ACTUATOR --
-		elseif (triggeringProperty == "targetLevel") then
-			deviceSuffix = deviceSuffix .. "_" .. triggeringProperty
-			sendData = newValue
-		-- SENSOR --
-		elseif (triggeringProperty == "batteryLevel") then
-			deviceSuffix = deviceSuffix .. "_" .. triggeringProperty
-			sendData = newValue
-		-- UNKNOWN --
-		else
-			propertyErrorMessage(triggeringProperty)
-			fibaro:debug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
-			return
-		end
-		
-		
-	elseif (deviceType == "com.fibaro.FGMS001" or deviceType == "com.fibaro.FGMS001v2") then
-		-- SENSOR --
-		if(triggeringProperty == "value") then
-			if (tonumber(newValue) > 0) then sendData = 'ON' else sendData = 'OFF' end
-		-- SENSOR --
-		elseif (triggeringProperty == "batteryLevel" or triggeringProperty == "tamper") then
-			deviceSuffix = deviceSuffix .. "_" .. triggeringProperty
-			sendData = newValue
-		-- UNKNOWN --
-		else
-			propertyErrorMessage(triggeringProperty)
-			fibaro:debug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
-			return
-		end
-	elseif (deviceType == "com.fibaro.lightSensor" or deviceType == "com.fibaro.temperatureSensor") then
-		-- SENSOR --
-		if(triggeringProperty == "value") then
-			sendData = newValue
-		-- UNKNOWN --
-		else
-			propertyErrorMessage(triggeringProperty)
-			fibaro:debug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
-			return
-		end
-	elseif (deviceType == "com.fibaro.doorSensor") then
-		-- SENSOR --
-		if(triggeringProperty == "value") then
-			if (tonumber(newValue) > 0) then sendData = 'OPEN' else sendData = 'CLOSED' end
-			method = 'PUT'
-			deviceSuffix = deviceSuffix .. '/state'
-		-- SENSOR --
-		elseif (triggeringProperty == "batteryLevel") then
-			deviceSuffix = deviceSuffix .. "_" .. triggeringProperty
-			sendData = newValue
-		elseif (triggeringProperty == "sceneActivation" ) then
-      deviceSuffix = deviceSuffix .. "_" .. triggeringProperty
-      sendData = newValue	
-		else -- UNKNOWN --
-			propertyErrorMessage(triggeringProperty)
-			fibaro:debug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
-			return
-		end	
-	elseif (deviceType == "com.fibaro.multilevelSensor") then
-		-- SENSOR --
-		if(triggeringProperty == "value") then
-			sendData = newValue
-		-- UNKNOWN --
-		else
-			propertyErrorMessage(triggeringProperty)
-			fibaro:debug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
-			return
-		end	
-	-- UNKNOWN --
-	else
-		propertyErrorMessage(deviceType)
-		fibaro:debug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
-		return
-	end
-	
-	request(method, baseUrl .. deviceName .. deviceSuffix, sendData)
+  local deviceID = trigger['deviceID']
+  local deviceType = fibaro:getType(deviceID)
+  local deviceName = fibaro:getName(deviceID)
+  local triggeringProperty = trigger['propertyName']
+  local newValue = fibaro:getValue(deviceID, triggeringProperty)
+  
+  logDebug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
+  
+  local baseUrl = fibaro:getGlobalValue("OH_url") .. '/rest/items/'
+  local deviceSuffix = '_' .. deviceID
+  local sendData = ""
+  
+  local method = 'PUT'
+  
+  if(deviceType == "com.fibaro.FGD212"            or deviceType == "com.fibaro.multilevelSwitch"  or deviceType == "com.fibaro.binarySwitch"      or 
+     deviceType == "com.fibaro.FGWP101"           or deviceType == "com.fibaro.doorLock"          or deviceType == "com.fibaro.setPoint"          or
+     deviceType == "com.fibaro.thermostatDanfoss" or deviceType == "com.fibaro.doorSensor"        or deviceType == "com.fibaro.operatingMode"     or
+     deviceType == "com.fibaro.lightSensor"       or deviceType == "com.fibaro.temperatureSensor" or deviceType == "com.fibaro.multilevelSensor"  or
+     deviceType == "com.fibaro.FGMS001"           or deviceType == "com.fibaro.FGMS001v2") then
+    if(triggeringProperty == "value") then
+      sendData = transformSendData(deviceType,triggeringProperty,newValue)
+      deviceSuffix = deviceSuffix .. '/state'
+    elseif (triggeringProperty == "power"       or triggeringProperty == "energy"       or triggeringProperty == "sceneActivation"  or 
+            triggeringProperty == "targetLevel" or triggeringProperty == "batteryLevel" or triggeringProperty == "mode"             or
+            triggeringProperty == "tamper") then
+      sendData = transformSendData(deviceType,triggeringProperty,newValue)
+      deviceSuffix = deviceSuffix .. "_" .. triggeringProperty .. '/state'
+    else -- UNKNOWN --
+      propertyErrorMessage(triggeringProperty)
+      fibaro:debug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
+      return
+    end
+  -- UNKNOWN --
+  else
+    propertyErrorMessage(deviceType)
+    fibaro:debug('Src: ' .. deviceID .. ' Trigger prop: ' .. triggeringProperty .. ' Type: ' .. deviceType .. ' Name: ' .. deviceName )
+    return
+  end
+  
+  request(method, baseUrl .. deviceName .. deviceSuffix, sendData)
 end
