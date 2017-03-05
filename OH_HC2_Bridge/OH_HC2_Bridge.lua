@@ -2,15 +2,18 @@
 %% properties
 408 value
 408 batteryLevel
+408 dead
 408 tamper
 409 value
 410 value
 413 value
 413 batteryLevel
+413 dead
 413 tamper
 414 value
 415 value
 394 value
+394 sceneActivation
 397 value
 397 power
 397 energy
@@ -28,20 +31,27 @@
 433 energy
 429 value
 429 batteryLevel
+429 dead
 431 value
 421 value
+421 mode
 422 value
 423 value
+423 mode
 425 value
+425 mode
 426 value
 427 value
-
+427 mode
+475 value
 
 313 value
 313 batteryLevel
+313 dead
 313 tamper
 314 value
 315 value
+299 sceneActivation
 298 value
 298 power
 298 energy
@@ -55,9 +65,10 @@
 306 power
 306 energy
 309 value
+309 mode
 310 value
 311 value
-
+311 mode
 
 319 value
 319 power
@@ -65,15 +76,18 @@
 326 value
 326 targetLevel
 326 batteryLevel
+326 dead
 322 value
 322 batteryLevel
+322 dead
 322 tamper
 323 value
 324 value
 
-
+20  value
 467 value
 467 batteryLevel
+467 dead
 467 tamper
 468 value
 469 value
@@ -81,6 +95,7 @@
 471 value
 485 value
 485 batteryLevel
+485 dead
 485 tamper
 486 value
 487 value
@@ -101,13 +116,17 @@
 456 energy
 463 value
 463 batteryLevel
+463 dead
 463 tamper
 464 value
 465 value
-
+516 value
+516 power
+516 energy
 
 351 value
 351 batterlyLevel
+351 dead
 351 tamper
 352 value
 353 value
@@ -121,10 +140,11 @@
 357 value
 358 value
 356 value
-
+514 value
 
 334 value
 334 batteryLevel
+334 dead
 334 tamper
 335 value
 336 value
@@ -137,7 +157,6 @@
 328 power
 328 energy
 
-
 367 value
 367 power
 367 energy
@@ -145,17 +164,25 @@
 371 power
 371 energy
 
-
 392 value
 392 batteryLevel
+392 dead
 481 value
 482 value
 483 value
+505 value
+505 power
+505 energy
+101 value
+101 batteryLevel
+101 dead
 
-495 value
-495 batteryLevel
+511 value
+511 batteryLevel
+511 dead
 378 value
 378 batteryLevel
+378 dead
 381 value
 381 power
 381 energy
@@ -164,7 +191,9 @@
 390 mode
 388 value
 388 mode
-
+509 value
+509 batteryLevel
+509 dead
 
 361 value
 361 power
@@ -172,11 +201,11 @@
 364 value
 364 targetLevel
 364 batteryLevel
-
+364 dead
 
 473 value
 473 batteryLevel
-
+473 dead
 
 386 value
 460 value
@@ -188,6 +217,7 @@
 440 value
 440 power
 440 energy
+497 color
 497 value
 497 r
 497 b
@@ -195,6 +225,9 @@
 497 w
 497 energy
 497 power
+506 value
+506 power
+506 energy
 
 436 value
 436 power
@@ -203,6 +236,20 @@
 477 value
 478 value
 479 value
+
+19 value
+19 batteryLevel
+19 dead
+528 value
+528 batteryLevel
+528 dead
+
+524 value
+524 batteryLevel
+524 dead
+525 tamper
+525 value
+526 value
 
 %% globals
 --]]
@@ -252,9 +299,11 @@ end
 
 local function transformSendData(deviceType, triggeringProperty, value)
 
-  if (deviceType == "com.fibaro.binarySwitch" or deviceType == "com.fibaro.FGWP101"   or
-      deviceType == "com.fibaro.FGMS001"      or deviceType == "com.fibaro.FGMS001v2" or
-      deviceType == "com.fibaro.doorLock") then
+  if(triggeringProperty == "dead") then
+    if (tonumber(value) > 0) then return 'ON' else return 'OFF' end
+  elseif (deviceType == "com.fibaro.binarySwitch" or deviceType == "com.fibaro.FGWP101"   or
+      deviceType == "com.fibaro.FGMS001"          or deviceType == "com.fibaro.FGMS001v2" or
+      deviceType == "com.fibaro.doorLock"         or deviceType == "com.fibaro.FGFS101") then
     if(triggeringProperty == "value") then
       if (tonumber(value) > 0) then return 'ON' else return 'OFF' end
     end
@@ -293,13 +342,23 @@ if(trigger['type'] == 'property') then
      deviceType == "com.fibaro.FGWP101"           or deviceType == "com.fibaro.doorLock"          or deviceType == "com.fibaro.setPoint"          or
      deviceType == "com.fibaro.thermostatDanfoss" or deviceType == "com.fibaro.doorSensor"        or deviceType == "com.fibaro.operatingMode"     or
      deviceType == "com.fibaro.lightSensor"       or deviceType == "com.fibaro.temperatureSensor" or deviceType == "com.fibaro.multilevelSensor"  or
-     deviceType == "com.fibaro.FGMS001"           or deviceType == "com.fibaro.FGMS001v2") then
+     deviceType == "com.fibaro.FGMS001"           or deviceType == "com.fibaro.FGMS001v2"         or deviceType == "com.fibaro.FGRGBW441M"        or
+     deviceType == "com.fibaro.FGSS001"           or deviceType == "com.fibaro.FGFS101") then
     if(triggeringProperty == "value") then
       sendData = transformSendData(deviceType,triggeringProperty,newValue)
       deviceSuffix = deviceSuffix .. '/state'
-    elseif (triggeringProperty == "power"       or triggeringProperty == "energy"       or triggeringProperty == "sceneActivation"  or 
+    elseif (triggeringProperty == "power"       or triggeringProperty == "energy"       or triggeringProperty == "dead"             or
             triggeringProperty == "targetLevel" or triggeringProperty == "batteryLevel" or triggeringProperty == "mode"             or
-            triggeringProperty == "tamper") then
+            triggeringProperty == "tamper"      or triggeringProperty == "r"            or triggeringProperty == "g"                or
+            triggeringProperty == "b"           or triggeringProperty == "w"            or triggeringProperty == "color") then
+      
+      sendData = transformSendData(deviceType,triggeringProperty,newValue)
+      deviceSuffix = deviceSuffix .. "_" .. triggeringProperty .. '/state'
+    elseif(triggeringProperty == "sceneActivation")then
+      if(newValue == "16")then
+        logDebug("Filtering sceneActivation from deviceId " .. deviceID .. " with value " .. newValue)
+        return
+      end
       sendData = transformSendData(deviceType,triggeringProperty,newValue)
       deviceSuffix = deviceSuffix .. "_" .. triggeringProperty .. '/state'
     else -- UNKNOWN --
